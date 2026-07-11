@@ -1,383 +1,66 @@
--- =============================================
--- Desert Storm — Visuals, Aimbot, World ESP & Misc
--- =============================================
+local cloneref = cloneref or function(i: Instance) return i; end;
 
-menu.add_tab("Desert Storm", "DS", "full")
+local SG: StarterGui = cloneref(game:GetService("StarterGui"));
+local Players: Players = cloneref(game:GetService("Players"));
 
--- === NPC Visuals Group ===
-menu.add_group("Desert Storm", "NPC Visuals")
-menu.add_checkbox("Desert Storm", "NPC Visuals", "ds_enabled",  "Enabled",        false)
-menu.add_slider_int("Desert Storm", "NPC Visuals", "ds_npc_range", "Max Distance (m)", 1, 1000, 500, { parent = "ds_enabled" })
-menu.add_checkbox("Desert Storm", "NPC Visuals", "ds_skeleton", "Skeleton Chams", false, { parent = "ds_enabled", colorpicker = {1, 1, 1, 1} })
-menu.add_checkbox("Desert Storm", "NPC Visuals", "ds_box",      "Box ESP",        false, { parent = "ds_enabled", colorpicker = {1, 1, 1, 1} })
-menu.add_combo("Desert Storm", "NPC Visuals", "ds_box_style", "Box Style", {"Full Box", "Corner Box"}, 0, { parent = "ds_enabled" })
-menu.add_checkbox("Desert Storm", "NPC Visuals", "ds_health",   "Health Bar",     false, { parent = "ds_enabled" })
-menu.add_checkbox("Desert Storm", "NPC Visuals", "ds_name",     "Name ESP",       false, { parent = "ds_enabled", colorpicker = {1, 1, 1, 1} })
-menu.add_checkbox("Desert Storm", "NPC Visuals", "ds_dist",     "Distance",       false, { parent = "ds_enabled", colorpicker = {0.7, 0.7, 0.7, 1} })
+local get_id = loadstring(game:HttpGet("https://github.com/iiamkayy/Desert-Storm/edit/main/pr"))();
 
--- === Aimbot Group ===
-menu.add_group("Desert Storm", "Aimbot")
-menu.add_checkbox("Desert Storm", "Aimbot", "ds_aim_enabled", "Enable Aimbot", false)
-menu.add_combo("Desert Storm", "Aimbot", "ds_aim_bone", "Target Bone", {"Head", "Torso", "Legs"}, 0, { parent = "ds_aim_enabled" })
-menu.add_slider_int("Desert Storm", "Aimbot", "ds_aim_strength", "Lock Strength (Lower if flickers)", 1, 10, 5, { parent = "ds_aim_enabled" })
-menu.add_slider_int("Desert Storm", "Aimbot", "ds_aim_fov", "FOV Size", 20, 500, 150, { parent = "ds_aim_enabled" })
-menu.add_checkbox("Desert Storm", "Aimbot", "ds_aim_draw_fov", "Show FOV Circle", true, { parent = "ds_aim_enabled", colorpicker = {1, 1, 1, 0.5} })
+local plr = Players.LocalPlayer;
 
--- === World ESP Group ===
-menu.add_group("Desert Storm", "World ESP")
-menu.add_checkbox("Desert Storm", "World ESP", "ds_world_enabled", "Enable World ESP", false)
-menu.add_checkbox("Desert Storm", "World ESP", "ds_extracts", "Extract Points", false, { parent = "ds_world_enabled", colorpicker = {0, 1, 0.5, 1} })
-menu.add_slider_int("Desert Storm", "World ESP", "ds_extract_range", "Extract Range (m)", 1, 1000, 500, { parent = "ds_world_enabled" })
-menu.add_checkbox("Desert Storm", "World ESP", "ds_bodybags", "Bodybags / Corpses", false, { parent = "ds_world_enabled", colorpicker = {1, 0.2, 0.2, 1} })
-menu.add_slider_int("Desert Storm", "World ESP", "ds_bodybag_range", "Bodybag Range (m)", 1, 1000, 200, { parent = "ds_world_enabled" })
-menu.add_checkbox("Desert Storm", "World ESP", "ds_containers", "Containers", false, { parent = "ds_world_enabled", colorpicker = {0.5, 0.5, 1, 1} })
-menu.add_combo("Desert Storm", "World ESP", "ds_container_filter", "Container Filter", {"All", "Weapon", "Medical", "Safe", "Ammo", "Supply", "Bag", "Other"}, 0, { parent = "ds_containers" })
-menu.add_slider_int("Desert Storm", "World ESP", "ds_container_range", "Container Range (m)", 1, 1000, 200, { parent = "ds_world_enabled" })
-
--- === Misc Group ===
-menu.add_group("Desert Storm", "Misc")
-
--- Fullbright
-menu.add_checkbox("Desert Storm", "Misc", "ds_fullbright", "Fullbright", false)
-
--- Speed Hack
-menu.add_checkbox("Desert Storm", "Misc", "ds_speed_enabled", "Enable Speed Hack", false)
-menu.add_slider_int("Desert Storm", "Misc", "ds_speed_amount", "Walk Speed", 16, 150, 40, { parent = "ds_speed_enabled" })
-
--- Custom Crosshair
-menu.add_checkbox("Desert Storm", "Misc", "ds_crosshair", "Custom Crosshair", false)
-menu.add_combo("Desert Storm", "Misc", "ds_crosshair_style", "Style", {"Dot", "Cross", "Circle", "Cross + Circle"}, 0, { parent = "ds_crosshair" })
-menu.add_slider_int("Desert Storm", "Misc", "ds_crosshair_size", "Size", 1, 30, 5, { parent = "ds_crosshair" })
-menu.add_slider_int("Desert Storm", "Misc", "ds_crosshair_thickness", "Thickness", 1, 5, 2, { parent = "ds_crosshair" })
-menu.add_checkbox("Desert Storm", "Misc", "ds_crosshair_color", "Crosshair Color", false, { parent = "ds_crosshair", colorpicker = {1, 1, 1, 1} })
-menu.add_checkbox("Desert Storm", "Misc", "ds_crosshair_outline", "Show Outline", true, { parent = "ds_crosshair" })
-
-
--- =============================================
--- HELPERS
--- =============================================
-local FONT_SIZE = 13
-local function text_nokia(x, y, txt, col, size)
-    draw.text(x, y, txt, col, size or FONT_SIZE, "nokia")
-end
-
-local CONNECTIONS = {
-    {"Head", "UpperTorso"}, {"UpperTorso", "LowerTorso"},
-    {"UpperTorso", "LeftUpperArm"}, {"LeftUpperArm", "LeftLowerArm"}, {"LeftLowerArm", "LeftHand"},
-    {"UpperTorso", "RightUpperArm"}, {"RightUpperArm", "RightLowerArm"}, {"RightLowerArm", "RightHand"},
-    {"LowerTorso", "LeftUpperLeg"}, {"LeftUpperLeg", "LeftLowerLeg"}, {"LeftLowerLeg", "LeftFoot"},
-    {"LowerTorso", "RightUpperLeg"}, {"RightUpperLeg", "RightLowerLeg"}, {"RightLowerLeg", "RightFoot"},
-}
-local BONE_NAMES = {
-    "Head", "UpperTorso", "LowerTorso",
-    "LeftUpperArm", "LeftLowerArm", "LeftHand", "RightUpperArm", "RightLowerArm", "RightHand",
-    "LeftUpperLeg", "LeftLowerLeg", "LeftFoot", "RightUpperLeg", "RightLowerLeg", "RightFoot",
-}
-
--- =============================================
--- CACHES
--- =============================================
-local npc_cache = {}; local npc_cache_time = 0
-local world_cache = { bodybags = {}, containers = {}, extracts = {} }; local world_cache_time = 0
-
-local function refresh_npcs()
-    local now = utility.get_tick_count()
-    if now - npc_cache_time < 500 and #npc_cache > 0 then return end
-    npc_cache_time = now; npc_cache = {}
-    local bots = game.workspace:find_first_child("Bots")
-    if not bots then return end
-    local ok, children = pcall(function() return bots:get_children() end)
-    if not ok or not children then return end
-    for i = 1, #children do
-        local model = children[i]
-        if model.class_name == "Model" then
-            local hum = model:find_first_child_of_class("Humanoid")
-            local root = model:find_first_child("HumanoidRootPart")
-            if hum and root then
-                local ok2, hp = pcall(function() return hum.health end)
-                if ok2 and hp and hp > 0 then npc_cache[#npc_cache + 1] = { model = model, hum = hum, root = root } end
-            end
-        end
+local notifs = {
+    ["success"] = function(msg: string)
+        SG:SetCore("SendNotification", {
+            ["Title"] = "SUCCESS - READ BELOW",
+            ["Text"] = msg,
+            ["Icon"] = get_id("logo");
+            ["Duration"] = 60
+        });
+    end,
+    ["info"] = function(info: string)
+        SG:SetCore("SendNotification", {
+            ["Title"] = "INFO - READ BELOW",
+            ["Text"] = info,
+            ["Icon"] = get_id("logo");
+            ["Duration"] = 20,
+            ["Button1"] = "Close"
+        });
+    end,
+    ["warning"] = function(w: string)
+        SG:SetCore("SendNotification", {
+            ["Title"] = "WARNING - READ BELOW",
+            ["Text"] = w,
+            ["Icon"] = get_id("logo");
+            ["Duration"] = 30,
+            ["Button1"] = "Close"
+        });
+    end,
+    ["error"] = function(err: string)
+        SG:SetCore("SendNotification", {
+            ["Title"] = "ERROR - READ BELOW",
+            ["Text"] = err,
+            ["Icon"] = get_id("logo");
+            ["Duration"] = 60,
+            ["Button1"] = "Close"
+        });
     end
-end
+};
 
-local function get_root_part(model)
-    if not model then return nil end
-    local part = model:find_first_child_of_class("BasePart")
-    if part then return part end
-    local ok, children = pcall(function() return model:get_children() end)
-    if ok and children then for _, c in ipairs(children) do if c:is_a("BasePart") then return c end end end
-    return nil
-end
+if getgenv()["OMA'S SCRIPT RUNNING"] then
+    notifs["warning"]("DO NOT EXECUTE THIS SCRIPT MORE THAN ONCE!");
+    --task.wait(1);
+    coroutine.yield();
+    --plr:Kick("DO NOT EXECUTE THIS SCRIPT MORE THAN ONCE!");
+    return;
+end;
 
-local function refresh_world()
-    local now = utility.get_tick_count()
-    if now - world_cache_time < 500 and (#world_cache.bodybags > 0 or #world_cache.containers > 0 or #world_cache.extracts > 0) then return end
-    world_cache_time = now; world_cache = { bodybags = {}, containers = {}, extracts = {} }
-    
-    local no_col = game.workspace:find_first_child("NoCollision")
-    if no_col then
-        local exits = no_col:find_first_child("ExitLocations")
-        if exits then
-            local ok, children = pcall(function() return exits:get_children() end)
-            if ok and children then
-                for i = 1, #children do
-                    local child = children[i]
-                    local part = child:is_a("BasePart") and child or get_root_part(child)
-                    if part then world_cache.extracts[#world_cache.extracts + 1] = { name = child.name, part = part } end
-                end
-            end
-        end
-    end
-    if #world_cache.extracts == 0 then
-        local ok, children = pcall(function() return game.workspace:get_children() end)
-        if ok and children then
-            for i = 1, #children do
-                local child = children[i]; local name_lower = child.name:lower()
-                if name_lower:find("extract") or name_lower:find("exit") then
-                    local part = child:is_a("BasePart") and child or get_root_part(child)
-                    if part then world_cache.extracts[#world_cache.extracts + 1] = { name = child.name, part = part } end
-                end
-            end
-        end
-    end
+getgenv()["OMA'S SCRIPT RUNNING"] = true;
 
-    local drops = game.workspace:find_first_child("DroppedItems")
-    if drops then
-        local ok, children = pcall(function() return drops:get_children() end)
-        if ok and children then
-            for i = 1, #children do
-                local child = children[i]
-                local models = child.class_name == "Folder" and (function() local ok2, sub = pcall(function() return child:get_children() end) return ok2 and sub or {} end)() or {child}
-                for j = 1, #models do
-                    local model = models[j]
-                    if model.class_name == "Model" and model.name ~= "" then
-                        local part = get_root_part(model)
-                        if part then
-                            local is_bodybag = false; local name_lower = model.name:lower()
-                            if name_lower:find("bodybag") or name_lower:find("corpse") or name_lower:find("dead") then is_bodybag = true
-                            else
-                                local hum = model:find_first_child_of_class("Humanoid")
-                                if hum then local ok2, hp = pcall(function() return hum.health end) if ok2 and hp and hp <= 0 then is_bodybag = true end end
-                            end
-                            if is_bodybag then world_cache.bodybags[#world_cache.bodybags + 1] = { name = model.name, part = part } end
-                        end
-                    end
-                end
-            end
-        end
-    end
+local c; c = Players.PlayerRemoving:Connect(function(player)
+    if player == plr then getgenv()["OMA'S SCRIPT RUNNING"] = nil; c:Disconnect(); c = nil; end;
+end);
 
-    local containers_folder = game.workspace:find_first_child("Containers")
-    if containers_folder then
-        local ok, children = pcall(function() return containers_folder:get_children() end)
-        if ok and children then
-            for i = 1, #children do
-                local child = children[i]
-                local models = child.class_name == "Folder" and (function() local ok2, sub = pcall(function() return child:get_children() end) return ok2 and sub or {} end)() or {child}
-                for j = 1, #models do
-                    local model = models[j]
-                    if model.class_name == "Model" and model.name ~= "" then
-                        local part = get_root_part(model)
-                        if part then world_cache.containers[#world_cache.containers + 1] = { name = model.name, part = part } end
-                    end
-                end
-            end
-        end
-    end
-end
+loadstring(game:HttpGet("https://github.com/iiamkayy/Desert-Storm/edit/main/pr"))();
 
--- =============================================
--- DRAW HELPERS
--- =============================================
-local function draw_corner_box(x, y, w, h, col, t)
-    local l = math.max(w, h) * 0.2
-    draw.line(x, y, x+l, y, col, t) draw.line(x, y, x, y+l, col, t)
-    draw.line(x+w, y, x+w-l, y, col, t) draw.line(x+w, y, x+w, y+l, col, t)
-    draw.line(x, y+h, x+l, y+h, col, t) draw.line(x, y+h, x, y+h-l, col, t)
-    draw.line(x+w, y+h, x+w-l, y+h, col, t) draw.line(x+w, y+h, x+w, y+h-l, col, t)
-end
+notifs["info"]("Executing...");
 
-local function draw_fov_circle(cx, cy, r, col, t)
-    for i = 1, 64 do
-        local a1, a2 = (i-1)/64*math.pi*2, i/64*math.pi*2
-        draw.line(cx+math.cos(a1)*r, cy+math.sin(a1)*r, cx+math.cos(a2)*r, cy+math.sin(a2)*r, col, t)
-    end
-end
-
-local function draw_world_item(item, range, color, show_box)
-    local ok, pos = pcall(function() return item.part.position end)
-    if not ok or not pos then return end
-    local me = entity.get_local_player(); local mpos = me and me.position; local dist_m = 0
-    if mpos then local dx, dy, dz = mpos.x-pos.x, mpos.y-pos.y, mpos.z-pos.z dist_m = math.sqrt(dx*dx+dy*dy+dz*dz) end
-    if dist_m <= range then
-        local sx, sy, vis = draw.world_to_screen(pos.x, pos.y, pos.z)
-        if vis then
-            local box_size = 0
-            if show_box then box_size = math.max(15, 2000/(dist_m+20)) local half = box_size/2 draw.rect(sx-half, sy-half, box_size, box_size, color, 0, 1) end
-            local y_off = (show_box and box_size*0.5 or 0) + 4
-            local txt = item.name .. " [" .. math.floor(dist_m) .. "m]"
-            local tw = draw.get_text_size(txt, FONT_SIZE)
-            text_nokia(sx - (tw*0.5), sy - y_off - FONT_SIZE, txt, color, FONT_SIZE)
-        end
-    end
-end
-
-local function draw_custom_crosshair(cx, cy)
-    local style = menu.get("ds_crosshair_style")
-    local size = menu.get("ds_crosshair_size")
-    local thick = menu.get("ds_crosshair_thickness")
-    local col = menu.get_color("ds_crosshair_color")
-    local outline = menu.get("ds_crosshair_outline")
-    local out_col = {0, 0, 0, 1}
-    
-    if style == 0 then -- Dot
-        if outline then draw.rect_filled(cx-thick-1, cy-thick-1, (thick*2)+2, (thick*2)+2, out_col, 0) end
-        draw.rect_filled(cx-thick, cy-thick, thick*2, thick*2, col, 0)
-    elseif style == 1 then -- Cross
-        if outline then
-            draw.line(cx-size, cy, cx+size, cy, out_col, thick+2)
-            draw.line(cx, cy-size, cx, cy+size, out_col, thick+2)
-        end
-        draw.line(cx-size, cy, cx+size, cy, col, thick)
-        draw.line(cx, cy-size, cx, cy+size, col, thick)
-    elseif style == 2 then -- Circle
-        draw_fov_circle(cx, cy, size, out_col, thick+2)
-        draw_fov_circle(cx, cy, size, col, thick)
-    elseif style == 3 then -- Cross + Circle
-        if outline then draw.line(cx-size, cy, cx+size, cy, out_col, thick+2) draw.line(cx, cy-size, cx, cy+size, out_col, thick+2) end
-        draw.line(cx-size, cy, cx+size, cy, col, thick)
-        draw.line(cx, cy-size, cx, cy+size, col, thick)
-        draw_fov_circle(cx, cy, size, out_col, thick+2)
-        draw_fov_circle(cx, cy, size, col, thick)
-    end
-end
-
--- =============================================
--- MAIN FRAME
--- =============================================
-function on_frame()
-    refresh_npcs()
-    refresh_world()
-
-    local me = entity.get_local_player()
-    local mpos = me and me.position
-    local max_range = menu.get("ds_npc_range")
-
-    -- ========================
-    -- MISC LOGIC
-    -- ========================
-    -- Fullbright
-    if menu.get("ds_fullbright") then
-        local lit = game.lighting
-        lit.Brightness = 2
-        lit.ClockTime = 14
-        lit.FogEnd = 100000
-        lit.GlobalShadows = false
-        lit.Ambient = {1, 1, 1}
-        lit.OutdoorAmbient = {1, 1, 1}
-    end
-
-    -- Speed Hack
-    if menu.get("ds_speed_enabled") then
-        local char = game.local_player.character
-        if char then
-            local hum = char:find_first_child("Humanoid")
-            if hum then
-                local speed = menu.get("ds_speed_amount")
-                hum.WalkSpeed = speed
-                -- Anti-cheat mirror bypass
-                local ok, wc = pcall(function() return hum.WalkspeedCheck end)
-                if ok and wc then hum.WalkspeedCheck = speed end
-            end
-        end
-    end
-
-    -- Custom Crosshair
-    if menu.get("ds_crosshair") then
-        local cx, cy = input.get_screen_center()
-        draw_custom_crosshair(cx, cy)
-    end
-
-    -- ========================
-    -- AIMBOT LOGIC
-    -- ========================
-    if menu.get("ds_aim_enabled") and input.is_key_down(0x02) then
-        local mx, my = utility.get_mouse_pos()
-        local fov, strength = menu.get("ds_aim_fov"), menu.get("ds_aim_strength") / 10.0 
-        local target_bone_name = "Head"
-        local bone_id = menu.get("ds_aim_bone")
-        if bone_id == 1 then target_bone_name = "UpperTorso" elseif bone_id == 2 then target_bone_name = "LowerTorso" end
-        local best_target, best_dist = nil, fov
-        for i = 1, #npc_cache do
-            local npc = npc_cache[i]
-            local ok1, part = pcall(function() return npc.model:find_first_child(target_bone_name) end)
-            if ok1 and part then
-                local ok2, pos = pcall(function() return part.position end)
-                if ok2 and pos then
-                    if mpos then local ddx, ddy, ddz = mpos.x-pos.x, mpos.y-pos.y, mpos.z-pos.z if math.sqrt(ddx*ddx+ddy*ddy+ddz*ddz) > max_range then goto aim_skip end end
-                    local sx, sy, vis = draw.world_to_screen(pos.x, pos.y, pos.z)
-                    if vis then local dx, dy = sx-mx, sy-my local dist_2d = math.sqrt(dx*dx+dy*dy) if dist_2d < best_dist then best_dist = dist_2d best_target = {x=sx, y=sy} end end
-                end
-            end
-            ::aim_skip::
-        end
-        if best_target then local dx, dy = best_target.x-mx, best_target.y-my if math.abs(dx) < 2000 and math.abs(dy) < 2000 then input.move_mouse(dx*strength, dy*strength) end end
-    end
-
-    -- FOV CIRCLE
-    if menu.get("ds_aim_enabled") and menu.get("ds_aim_draw_fov") then
-        local mx, my = utility.get_mouse_pos()
-        draw_fov_circle(mx, my, menu.get("ds_aim_fov"), menu.get_color("ds_aim_draw_fov"), 1)
-    end
-
-    -- ========================
-    -- WORLD ESP LOGIC
-    -- ========================
-    if menu.get("ds_world_enabled") then
-        if menu.get("ds_extracts") then local col, range = menu.get_color("ds_extracts"), menu.get("ds_extract_range") for i = 1, #world_cache.extracts do draw_world_item(world_cache.extracts[i], range, col, true) end end
-        if menu.get("ds_bodybags") then local col, range = menu.get_color("ds_bodybags"), menu.get("ds_bodybag_range") for i = 1, #world_cache.bodybags do draw_world_item(world_cache.bodybags[i], range, col, true) end end
-        if menu.get("ds_containers") then
-            local col, range, filter_mode = menu.get_color("ds_containers"), menu.get("ds_container_range"), menu.get("ds_container_filter")
-            local filter_keywords = { "weapon", "medical", "safe", "ammo", "supply", "bag" }
-            for i = 1, #world_cache.containers do
-                local cont, name_lower, show = world_cache.containers[i], world_cache.containers[i].name:lower(), false
-                if filter_mode == 0 then show = true elseif filter_mode == 7 then show = true for _, kw in ipairs(filter_keywords) do if name_lower:find(kw, 1, true) then show = false break end end else if name_lower:find(filter_keywords[filter_mode], 1, true) then show = true end end
-                if show then draw_world_item(cont, range, col, true) end
-            end
-        end
-    end
-
-    -- ========================
-    -- NPC VISUALS LOGIC
-    -- ========================
-    if not menu.get("ds_enabled") then return end
-    local show_skel, show_box, box_style, show_hp, show_name, show_dist = menu.get("ds_skeleton"), menu.get("ds_box"), menu.get("ds_box_style"), menu.get("ds_health"), menu.get("ds_name"), menu.get("ds_dist")
-    local skel_col, box_col, name_col, dist_col = menu.get_color("ds_skeleton"), menu.get_color("ds_box"), menu.get_color("ds_name"), menu.get_color("ds_dist")
-
-    for i = 1, #npc_cache do
-        local npc = npc_cache[i]
-        local dist_m = 0
-        if mpos then local ok_r, rpos = pcall(function() return npc.root.position end) if ok_r and rpos then local dx, dy, dz = mpos.x-rpos.x, mpos.y-rpos.y, mpos.z-rpos.z dist_m = math.floor(math.sqrt(dx*dx+dy*dy+dz*dz)) end end
-        if dist_m > max_range then goto esp_skip end
-        local any_vis, scr = false, {}
-        for j = 1, #BONE_NAMES do
-            local ok1, part = pcall(function() return npc.model:find_first_child(BONE_NAMES[j]) end)
-            if ok1 and part then local ok2, pos = pcall(function() return part.position end) if ok2 and pos then local sx, sy, vis = draw.world_to_screen(pos.x, pos.y, pos.z) scr[BONE_NAMES[j]] = {x=sx, y=sy, vis=vis} if vis then any_vis = true end end end
-        end
-        if any_vis and scr.Head then
-            local mn_x, mn_y, mx_x, mx_y = math.huge, math.huge, -math.huge, -math.huge
-            for _, s in pairs(scr) do if s.vis then if s.x < mn_x then mn_x = s.x end if s.y < mn_y then mn_y = s.y end if s.x > mx_x then mx_x = s.x end if s.y > mx_y then mx_y = s.y end end end
-            local pad, bx, by, bw, bh = 4, mn_x - 4, mn_y - 4, mx_x - mn_x + 8, mx_y - mn_y + 8
-            if show_hp then
-                local ok_h, hp = pcall(function() return npc.hum.health end) local ok_m, max_hp = pcall(function() return npc.hum.max_health end)
-                if ok_h and ok_m and hp and max_hp and max_hp > 0 then local ratio = hp / max_hp draw.rect_filled(bx - 6, by, 4, bh, {0.1, 0.1, 0.1, 0.8}, 0) draw.rect_filled(bx - 6, by + bh - (bh * ratio), 4, bh * ratio, {1 - ratio, ratio, 0, 1}, 0) end
-            end
-            if show_box then if box_style == 1 then draw_corner_box(bx, by, bw, bh, box_col, 1) else draw.rect(bx, by, bw, bh, box_col, 0, 1) end end
-            if show_skel then for j = 1, #CONNECTIONS do local a, b = scr[CONNECTIONS[j][1]], scr[CONNECTIONS[j][2]] if a and b and a.vis and b.vis then draw.line(a.x, a.y, b.x, b.y, skel_col, 1) end end end
-            if show_name then local name_txt, tw = npc.model.name, draw.get_text_size(npc.model.name, FONT_SIZE) text_nokia(bx + (bw * 0.5) - (tw * 0.5), by - 16, name_txt, name_col, FONT_SIZE) end
-            if show_dist then local dist_txt, tw = "[" .. dist_m .. "m]", draw.get_text_size("[" .. dist_m .. "m]", FONT_SIZE) text_nokia(bx + (bw * 0.5) - (tw * 0.5), by + bh + 2, dist_txt, dist_col, FONT_SIZE) end
-        end
-        ::esp_skip::
-    end
-end
+return notifs;
