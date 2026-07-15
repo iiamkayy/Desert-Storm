@@ -1,5 +1,5 @@
 return {
-    ["discord_link"] = "RTxafU9Q", -- Removed the URL part
+    ["discord_link"] = "RTxafU9Q",
     ["names"] = {
         ["logo"] = "no_longer_needed",
         ["close"] = "no_longer_needed"
