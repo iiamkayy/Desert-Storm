@@ -1,6 +1,5 @@
--- Your GitHub info.luau file
 return {
-    ["discord_link"] = "https://discord.gg/RTxafU9Q",
+    ["discord_link"] = "RTxafU9Q", -- Removed the URL part
     ["names"] = {
         ["logo"] = "no_longer_needed",
         ["close"] = "no_longer_needed"
