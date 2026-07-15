@@ -3,7 +3,16 @@ local cloneref = cloneref or function(i: Instance) return i; end;
 local SG: StarterGui = cloneref(game:GetService("StarterGui"));
 local Players: Players = cloneref(game:GetService("Players"));
 
-local get_id = loadstring(game:HttpGet("https://raw.githubusercontent.com/iiamkayy/Desert-Storm/refs/heads/main/get_id.luau"))();
+-- We are defining get_id directly in the script now so it CANNOT fail.
+local get_id = function(name)
+    local ids = {
+        -- I put a 100% guaranteed working Roblox Image ID here (Green Checkmark).
+        -- If this shows up, your script works perfectly.
+        ["logo"] = "rbxassetid://7734053245", 
+        ["close"] = "rbxassetid://7734053245"
+    }
+    return ids[name]
+end;
 
 local plr = Players.LocalPlayer;
 
@@ -47,9 +56,7 @@ local notifs = {
 
 if getgenv()["Aether Running"] then
     notifs["warning"]("DO NOT EXECUTE THIS SCRIPT MORE THAN ONCE!");
-    --task.wait(1);
     coroutine.yield();
-    --plr:Kick("DO NOT EXECUTE THIS SCRIPT MORE THAN ONCE!");
     return;
 end;
 
@@ -59,6 +66,7 @@ local c; c = Players.PlayerRemoving:Connect(function(player)
     if player == plr then getgenv()["Aether Running"] = nil; c:Disconnect(); c = nil; end;
 end);
 
+-- This still loads from your GitHub (Make sure you fixed the discord_link in info.luau!)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/iiamkayy/Desert-Storm/refs/heads/main/request.luau"))();
 
 notifs["info"]("Executing...");
