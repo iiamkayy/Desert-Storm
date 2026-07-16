@@ -966,7 +966,7 @@ end):add_keybind("Toggle", function(k)
     end
 end)
 
-SkyTimeSector.element("Dropdown", "Sky", {options = {"Default", "Orange Sunset", "Night", "Deep Night", "Crimson Dawn", "Overcast", "Apocalypse Red", "Space", "Foggy Morning", "Arctic"}}, function(d)
+SkyTimeSector.element("Dropdown", "Sky", {options = {"Default", "Orange Sunset", "Night", "Deep Night", "Crimson Dawn", "Overcast", "Apocalypse Red", "Coolkid", "Foggy Morning", "Arctic"}}, function(d)
     local skies = {
         ["Default"] = nil,
         ["Orange Sunset"]  = {SkyboxBk="rbxassetid://458016711",SkyboxDn="rbxassetid://458016826",SkyboxFt="rbxassetid://458016532",SkyboxLf="rbxassetid://458016655",SkyboxRt="rbxassetid://458016782",SkyboxUp="rbxassetid://458016792"},
