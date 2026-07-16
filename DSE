@@ -115,14 +115,21 @@ end
 -- ==========================================
 -- AETHER MAIN SCRIPT STARTS HERE
 -- ==========================================
+-- Aether| Desert Storm
+-- By nightfall @ngtfal
+
 if not game:IsLoaded() then game.Loaded:Wait() end
 
+local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
+local StarterGui = game:GetService("StarterGui")
 
+local plr = Players.LocalPlayer
 local cam = Workspace.CurrentCamera
 local mouse = plr:GetMouse()
 
@@ -133,13 +140,6 @@ local newcclosure = newcclosure or clonefunction
 local SG = loadstring(game:HttpGet("https://raw.githubusercontent.com/iiamkayy/Desert-Storm/refs/heads/main/main.luau"))()
 SG["success"]("Aether is loading...")
 
--- [REST OF YOUR SCRIPT GOES HERE, IT IS EXACTLY THE SAME AS THE LAST MESSAGE]
--- I am truncating it here so I don't hit the character limit, 
--- but just paste the rest of your Aether script starting from "local Config = {" 
--- all the way down to 'SG["success"]("Aether loaded!")' right below this line!
--- ==========================================
--- AETHER KEY SYSTEM
--- ==========================================
 -- ==========================================
 -- CONFIG & STATE
 -- ==========================================
@@ -305,11 +305,13 @@ end
 
 cam.DescendantAdded:Connect(function(d)
     if not Config.BulletTracer then return end
+    -- Muzzle flash particles are named Flash*, SmokePuff, SmokeCloud, SmokeTrail inside Muzzle attachment
     if d:IsA("ParticleEmitter") and d.Parent and d.Parent.Name == "Muzzle" then
         local wr = cam:FindFirstChild("WeaponRig")
         if not wr then return end
         local weaponFolder = wr:FindFirstChild("Weapon")
         if not weaponFolder then return end
+        -- Walk into the gun model to find Grip > Muzzle attachment position
         for _, gun in pairs(weaponFolder:GetChildren()) do
             local grip = gun:FindFirstChild("Grip")
             if grip then
@@ -398,6 +400,9 @@ local Tab5 = Library.new_tab("http://www.roblox.com/asset/?id=79529419358191")
 -- ==========================================
 -- STATUS VIEWER INTEGRATION
 -- ==========================================
+-- ==========================================
+-- INVENTORY VIEWER (FOV auto-track)
+-- ==========================================
 local InvViewGui = Instance.new("ScreenGui")
 InvViewGui.Name = "OMAInvViewer"
 InvViewGui.ResetOnSpawn = false
@@ -417,6 +422,7 @@ ivFrame.BorderSizePixel = 0
 ivFrame.Parent = InvViewGui
 ivCorner(ivFrame, 8)
 
+-- Header bar
 local ivHeader = Instance.new("Frame")
 ivHeader.Size = UDim2.new(1, 0, 0, 26)
 ivHeader.BackgroundColor3 = Color3.fromRGB(22, 22, 26)
@@ -454,6 +460,7 @@ ivVisLabel.TextSize = 10
 ivVisLabel.TextXAlignment = Enum.TextXAlignment.Right
 ivVisLabel.Parent = ivHeader
 
+-- Health bar strip
 local ivHpBg = Instance.new("Frame")
 ivHpBg.Size = UDim2.new(1, -8, 0, 5)
 ivHpBg.Position = UDim2.new(0, 4, 0, 28)
@@ -468,6 +475,7 @@ ivHpFill.BorderSizePixel = 0
 ivHpFill.Parent = ivHpBg
 ivCorner(ivHpFill, 2)
 
+-- Hotbar row (6 tool slots)
 local ivRow = Instance.new("Frame")
 ivRow.Size = UDim2.new(1, -8, 0, 72)
 ivRow.Position = UDim2.new(0, 4, 0, 38)
@@ -516,9 +524,11 @@ for i = 1, IV_SLOTS do
     ivSlots[i] = {Frame = sf, Icon = img, Label = lbl, Stroke = stroke}
 end
 
+-- Avatar thumbnail cache
 local ivAvatarCache = {}
 
 local function ivGetFOVTarget()
+    -- Returns the player closest to screen centre (no FOV gate — just nearest on-screen player)
     local screenCentre = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2)
     local best, bestDist = nil, math.huge
     for _, p in ipairs(Players:GetPlayers()) do
@@ -551,10 +561,12 @@ local function ivLoadAvatar(p)
 end
 
 local function ivGetToolIcon(tool)
+    -- 1) ItemIconID directly on the tool (confirmed from dump: M1911 has ItemIconID at tool level)
     local directIcon = tool:FindFirstChild("ItemIconID")
     if directIcon and directIcon:IsA("StringValue") and directIcon.Value ~= "" then
         return "rbxassetid://" .. directIcon.Value, nil
     end
+    -- 2) SPH_Weapon Configuration sub-child (some tools store it there)
     local sphCfg = tool:FindFirstChild("SPH_Weapon")
     if sphCfg then
         local iv = sphCfg:FindFirstChild("ItemIconID") or sphCfg:FindFirstChild("WeaponIcon")
@@ -562,19 +574,23 @@ local function ivGetToolIcon(tool)
             return "rbxassetid://" .. iv.Value, nil
         end
     end
+    -- 3) Grip > SpecialMesh TextureId (viewmodel gun grip)
     local grip = tool:FindFirstChild("Grip")
     if grip then
         local mesh = grip:FindFirstChildOfClass("SpecialMesh")
         if mesh and mesh.TextureId ~= "" then return mesh.TextureId, nil end
     end
+    -- 4) Handle > SpecialMesh TextureId
     local handle = tool:FindFirstChild("Handle")
     if handle then
         local mesh = handle:FindFirstChildOfClass("SpecialMesh")
         if mesh and mesh.TextureId ~= "" then return mesh.TextureId, nil end
     end
+    -- No icon found — return abbreviated name fallback
     return nil, tool.Name
 end
 
+-- Tier colour map (same as overhead ESP)
 local IV_TIER = {
     [0]=Color3.fromRGB(160,160,160),[1]=Color3.fromRGB(100,200,100),
     [2]=Color3.fromRGB(80,140,255),[3]=Color3.fromRGB(180,80,255),[4]=Color3.fromRGB(255,180,0)
@@ -609,6 +625,7 @@ local function ivUpdate()
     local hp = hum and hum.Health or 0
     local maxHp = (hum and hum.MaxHealth > 0) and hum.MaxHealth or 100
 
+    -- Distance in studs/meters
     local hrpIV = char:FindFirstChild("HumanoidRootPart")
     local distStr = ""
     if hrpIV then
@@ -620,6 +637,7 @@ local function ivUpdate()
     ivHpFill.Size = UDim2.new(math.clamp(hp / maxHp, 0, 1), 0, 1, 0)
     ivHpFill.BackgroundColor3 = Color3.fromRGB(80, 220, 80):Lerp(Color3.fromRGB(220, 60, 60), 1 - math.clamp(hp / maxHp, 0, 1))
 
+    -- Visibility check
     local head = char:FindFirstChild("Head")
     if head then
         local rp2 = RaycastParams.new()
@@ -631,6 +649,7 @@ local function ivUpdate()
         ivVisLabel.TextColor3 = vis and Color3.fromRGB(60, 220, 60) or Color3.fromRGB(220, 60, 60)
     end
 
+    -- Collect tools: equipped (in char) + hotbar (in Backpack), up to IV_SLOTS
     local tools = {}
     for _, c in ipairs(char:GetChildren()) do
         if c:IsA("Tool") then table.insert(tools, c) end
@@ -642,11 +661,13 @@ local function ivUpdate()
         end
     end
 
+    -- Fill slots
     for i = 1, IV_SLOTS do
         local tool = tools[i]
         local s = ivSlots[i]
         if tool then
             local iconId, fallbackName = ivGetToolIcon(tool)
+            -- Check for tier on the tool's SPH_Weapon or the tool itself
             local tierVal = tool:FindFirstChild("GearTier") or (tool:FindFirstChild("SPH_Weapon") and tool.SPH_Weapon:FindFirstChild("GearTier"))
             local tierColor = tierVal and (IV_TIER[math.floor(tierVal.Value)] or IV_TIER[0]) or IV_TIER[0]
             s.Stroke.Color = tierColor
@@ -669,6 +690,7 @@ local function ivUpdate()
     end
 end
 
+-- Update every 0.1s
 task.spawn(function()
     while task.wait(0.1) do
         pcall(ivUpdate)
@@ -836,6 +858,7 @@ BossSector.element("Toggle", "Movable Boss Info GUI", false, function(t) Config.
 -- ==========================================
 -- WORLD TAB ELEMENTS
 -- ==========================================
+-- Store original Lighting values so we can restore them
 local origBrightness      = Lighting.Brightness
 local origOutdoorAmbient  = Lighting.OutdoorAmbient
 local origAmbient         = Lighting.Ambient
@@ -855,6 +878,7 @@ WorldSector.element("Toggle", "No Grass", false, function(t)
 end)
 WorldSector.element("Toggle", "No Foliage", false, function(t)
     Config.Foliage = t.Toggle
+    -- Hide every BasePart that has a SurfaceAppearance (foliage meshes spread across map)
     for _, v in pairs(Workspace:GetDescendants()) do
         if v:IsA("BasePart") and v:FindFirstChildOfClass("SurfaceAppearance") then
             local p = v.Parent
@@ -1025,8 +1049,12 @@ CustomHitSoundSector.element("Slider", "Hit Sound Volume", {default = {min = 1, 
 
 local PlayerGui = plr:WaitForChild("PlayerGui")
 
+-- Custom Hit Sound: the game's hit sounds are KillShot / HeadShot / LimbShot / TorsoShot
+-- inside HitMarkerClient [LocalScript] which is parented to the LOCAL player's Character.
+-- We hook Sound.Played on each of the 4 sounds so our sound fires every time they do.
 local hitSoundConns = {}
 local function hookHitMarkerSounds(char)
+    -- clear old connections
     for _, c in pairs(hitSoundConns) do c:Disconnect() end
     hitSoundConns = {}
     if not char then return end
@@ -1035,6 +1063,7 @@ local function hookHitMarkerSounds(char)
             if snd:IsA("Sound") then
                 local conn = snd.Played:Connect(function()
                     if not Config.CustomHitSound or Config.CustomHitSoundID == "Default" then return end
+                    -- Create a one-shot Sound in workspace so it plays globally
                     local s = Instance.new("Sound")
                     s.SoundId = Config.CustomHitSoundID
                     s.Volume  = Config.CustomHitSoundVolume
@@ -1047,6 +1076,7 @@ local function hookHitMarkerSounds(char)
             end
         end
     end
+    -- HitMarkerClient may already be present or arrive shortly after spawn
     local hmc = char:FindFirstChild("HitMarkerClient")
     if hmc then
         attachTo(hmc)
@@ -1118,6 +1148,7 @@ end)
 -- ==========================================
 -- BOSS INFO UI
 -- ==========================================
+-- Parent to a ScreenGui so it survives CoreGui resets and doesn't get blocked
 local BossScreenGui = Instance.new("ScreenGui")
 BossScreenGui.Name = "OMAWareBossInfo"
 BossScreenGui.ResetOnSpawn = false
@@ -1174,8 +1205,9 @@ local SkeletonBones = {
 }
 
 -- ==========================================
--- CROSSHAIR
+-- CROSSHAIR (Drawing lines)
 -- ==========================================
+-- 4 lines (left, right, up, down) + 1 center dot
 local CrosshairLines = {
     L = Drawing.new("Line"), R = Drawing.new("Line"),
     U = Drawing.new("Line"), D = Drawing.new("Line"),
@@ -1260,6 +1292,7 @@ local function removeNPCESPObjects(bot)
     NPCESPObjects[bot] = nil
 end
 
+-- Scan Bots + HQNpcs on load
 local function scanNPCFolderForESP(folder)
     if not folder then return end
     for _, bot in pairs(folder:GetChildren()) do
@@ -1308,6 +1341,7 @@ Players.PlayerRemoving:Connect(function(p)
     end
 end)
 
+-- Background caching for weapons and stamina
 task.spawn(function()
     while task.wait(0.5) do
         local PlayersFolder = RS:FindFirstChild("Players")
@@ -1452,8 +1486,10 @@ RunService.Heartbeat:Connect(function()
     end
 
     if BossFrame.Visible then
+        -- Boss names confirmed from dump; also scan full Workspace for any boss model
         local BOSS_NAMES = {FireHawk=true,IronJaw=true,Tyrant=true,SwiftStrike=true,Anton=true,Dozer=true,Whisper=true,Death=true}
         local found = {}
+        -- Primary: check Workspace.Bots
         local botsF = Workspace:FindFirstChild("Bots")
         if botsF then
             for _, m in pairs(botsF:GetChildren()) do
@@ -1462,6 +1498,7 @@ RunService.Heartbeat:Connect(function()
                 end
             end
         end
+        -- Fallback: scan entire Workspace for any boss-named Model (in case they spawn elsewhere)
         for _, m in pairs(Workspace:GetDescendants()) do
             if m:IsA("Model") and BOSS_NAMES[m.Name] and not found[m.Name] and m:FindFirstChild("Humanoid") then
                 found[m.Name] = m
@@ -1493,6 +1530,7 @@ RunService.Heartbeat:Connect(function()
         BossText.Text = str ~= "" and str or "No bosses found"
     end
 
+    -- ViewModel Changer: colour/transparency every BasePart in WeaponRig (arms + weapon meshes)
     if Config.ViewModelChanger then
         local wr = cam:FindFirstChild("WeaponRig")
         if wr then
@@ -1505,15 +1543,18 @@ RunService.Heartbeat:Connect(function()
         end
     end
 
+    -- FOV Changer
     local targetFOV = Config.FOVChangerEnabled and Config.FOVChangerValue or 70
     if math.abs(cam.FieldOfView - targetFOV) > 0.05 then
         cam.FieldOfView = cam.FieldOfView + (targetFOV - cam.FieldOfView) * 0.2
     end
 
+    -- Time Changer (must be applied every frame; Roblox resets it otherwise)
     if Config.TimeChanger then
         Lighting.TimeOfDay = Config.CurrentTime
     end
 
+    -- Ambient Changer
     if Config.AmbientChangerRGB then
         local t2 = tick() * Config.AmbientChangerRGBSpeed
         Lighting.Ambient = Color3.fromHSV(t2 % 1, 1, 1)
@@ -1523,6 +1564,7 @@ RunService.Heartbeat:Connect(function()
         Lighting.OutdoorAmbient = Config.AmbientColor
     end
 
+    -- Cloud Changer
     if Config.CloudChanger then
         local clouds = Workspace.Terrain:FindFirstChild("Clouds")
         if clouds then clouds.Color = Config.CloudColor end
@@ -1532,13 +1574,16 @@ end)
 -- ==========================================
 -- MINECRAFT-STYLE OVERHEAD ITEM ESP
 -- ==========================================
-local MC_SLOT_SIZE = 26   
-local MC_SLOT_GAP  = 3    
-local MC_ICON_PAD  = 3    
-local MC_SLOT_COUNT = 5   
-local MC_TOTAL_W   = MC_SLOT_COUNT * (MC_SLOT_SIZE + MC_SLOT_GAP) - MC_SLOT_GAP  
-local MC_REF_DIST  = 20   
 
+-- Layout constants
+local MC_SLOT_SIZE = 26   -- px per icon square (base size at reference distance)
+local MC_SLOT_GAP  = 3    -- px gap between squares
+local MC_ICON_PAD  = 3    -- inner padding inside each square
+local MC_SLOT_COUNT = 5   -- Helmet, Armor, Backpack, Weapon1, Weapon2
+local MC_TOTAL_W   = MC_SLOT_COUNT * (MC_SLOT_SIZE + MC_SLOT_GAP) - MC_SLOT_GAP  -- 136px
+local MC_REF_DIST  = 20   -- studs: size is 1:1 at this distance, shrinks beyond
+
+-- Fallback placeholder icons (shown when slot is empty)
 local MC_PLACEHOLDER = {
     Helmet   = "rbxassetid://10747373187",
     Armor    = "rbxassetid://6031068833",
@@ -1546,21 +1591,25 @@ local MC_PLACEHOLDER = {
     Weapon   = "rbxassetid://10889218683",
 }
 
+-- Border color per GearTier value (matches the game's tier system)
 local MC_TIER_COLOR = {
-    [0] = Color3.fromRGB(160, 160, 160),  
-    [1] = Color3.fromRGB(100, 200, 100),  
-    [2] = Color3.fromRGB(80,  140, 255),  
-    [3] = Color3.fromRGB(180, 80,  255),  
-    [4] = Color3.fromRGB(255, 180, 0),    
+    [0] = Color3.fromRGB(160, 160, 160),  -- common   (grey)
+    [1] = Color3.fromRGB(100, 200, 100),  -- uncommon (green)
+    [2] = Color3.fromRGB(80,  140, 255),  -- rare     (blue)
+    [3] = Color3.fromRGB(180, 80,  255),  -- epic     (purple)
+    [4] = Color3.fromRGB(255, 180, 0),    -- legendary(gold)
 }
 local MC_DEFAULT_TIER = Color3.fromRGB(160, 160, 160)
 
+-- Returns the tier border color from an Accessory instance
 local function mcTierColor(acc)
     local tv = acc:FindFirstChild("GearTier")
     if tv then return MC_TIER_COLOR[math.floor(tv.Value)] or MC_DEFAULT_TIER end
     return MC_DEFAULT_TIER
 end
 
+-- Builds one icon slot frame inside a parent, at the given x offset.
+-- Returns: frame, icon ImageLabel, UIStroke, tier dot Frame
 local function mcMakeSlot(parent, xOffset)
     local frame = Instance.new("Frame")
     frame.Size              = UDim2.new(0, MC_SLOT_SIZE, 0, MC_SLOT_SIZE)
@@ -1589,6 +1638,7 @@ local function mcMakeSlot(parent, xOffset)
     icon.ScaleType              = Enum.ScaleType.Fit
     icon.Parent                 = frame
 
+    -- Small tier dot, bottom-right corner of the slot
     local dot = Instance.new("Frame")
     dot.Name            = "TierDot"
     dot.Size            = UDim2.new(0, 6, 0, 6)
@@ -1604,6 +1654,7 @@ local function mcMakeSlot(parent, xOffset)
     return frame, icon, stroke, dot
 end
 
+-- Fills a slot with a real icon + tier colour, or blanks it if empty.
 local function mcFillSlot(slotData, iconId, tierColor, isEmpty)
     if isEmpty or not iconId or iconId == "" then
         slotData.Icon.Image            = ""
@@ -1622,18 +1673,22 @@ local function mcFillSlot(slotData, iconId, tierColor, isEmpty)
     end
 end
 
+-- Shortens a weapon tool name so it fits in the small slot label.
 local function mcShortName(name)
     name = name:gsub(" IAR",""):gsub(" Rifle",""):gsub(" Pistol",""):gsub(" SMG",""):gsub(" LMG",""):gsub(" Sniper","")
     if #name > 8 then name = name:sub(1, 7) .. "." end
     return name
 end
 
+-- Builds (or rebuilds) the full BillboardGui on a player's Head.
+-- Returns the billboard root, a slots table, and the name TextLabel.
 local function mcBuildBillboard(player)
     local char = player.Character
     if not char then return nil end
     local head = char:FindFirstChild("Head")
     if not head then return nil end
 
+    -- Destroy any previous version
     local old = head:FindFirstChild("OMAMinecraftESP")
     if old then old:Destroy() end
 
@@ -1645,6 +1700,7 @@ local function mcBuildBillboard(player)
     bb.LightInfluence = 0
     bb.Parent         = head
 
+    -- Icon row container
     local iconRow = Instance.new("Frame")
     iconRow.Name                  = "IconRow"
     iconRow.Size                  = UDim2.new(0, MC_TOTAL_W, 0, MC_SLOT_SIZE)
@@ -1652,6 +1708,7 @@ local function mcBuildBillboard(player)
     iconRow.BackgroundTransparency = 1
     iconRow.Parent                = bb
 
+    -- Build all 5 slots
     local slotNames = {"Helmet", "Armor", "Backpack", "Weapon1", "Weapon2"}
     local slots = {}
     for i, sName in ipairs(slotNames) do
@@ -1660,6 +1717,7 @@ local function mcBuildBillboard(player)
         slots[sName] = {Frame = frame, Icon = icon, Stroke = stroke, Dot = dot}
     end
 
+    -- Name + distance bar below the icons
     local nameRow = Instance.new("Frame")
     nameRow.Name                  = "NameRow"
     nameRow.Size                  = UDim2.new(1, 0, 0, 22)
@@ -1688,8 +1746,10 @@ local function mcBuildBillboard(player)
     return bb, slots, nameLbl
 end
 
+-- Per-player billboard cache: [player] = {BB, Slots, NameLabel}
 local mcCache = {}
 
+-- Scans the character and populates all 5 slots + the name bar.
 local function mcUpdatePlayer(player)
     if not Config.OverheadInvESP then return end
     if player == plr then return end
@@ -1698,6 +1758,7 @@ local function mcUpdatePlayer(player)
     local head = char and char:FindFirstChild("Head")
     if not char or not head then return end
 
+    -- Rebuild if missing (e.g. after respawn)
     local cached = mcCache[player]
     if not cached or not head:FindFirstChild("OMAMinecraftESP") then
         local bb, slots, nameLbl = mcBuildBillboard(player)
@@ -1709,6 +1770,7 @@ local function mcUpdatePlayer(player)
     local slots  = cached.Slots
     local nameLbl = cached.NameLabel
 
+    -- ── Scan accessories by type tag ──────────────────────
     local helmetAcc, armorAcc, backpackAcc = nil, nil, nil
     for _, acc in ipairs(char:GetChildren()) do
         if acc:IsA("Accessory") then
@@ -1721,24 +1783,28 @@ local function mcUpdatePlayer(player)
         end
     end
 
+    -- Helmet slot
     if helmetAcc and helmetAcc:FindFirstChild("ItemIconID") and helmetAcc.ItemIconID.Value ~= "" then
         mcFillSlot(slots.Helmet, "rbxassetid://" .. helmetAcc.ItemIconID.Value, mcTierColor(helmetAcc), false)
     else
         mcFillSlot(slots.Helmet, MC_PLACEHOLDER.Helmet, nil, true)
     end
 
+    -- Armor slot
     if armorAcc and armorAcc:FindFirstChild("ItemIconID") and armorAcc.ItemIconID.Value ~= "" then
         mcFillSlot(slots.Armor, "rbxassetid://" .. armorAcc.ItemIconID.Value, mcTierColor(armorAcc), false)
     else
         mcFillSlot(slots.Armor, MC_PLACEHOLDER.Armor, nil, true)
     end
 
+    -- Backpack slot
     if backpackAcc and backpackAcc:FindFirstChild("ItemIconID") and backpackAcc.ItemIconID.Value ~= "" then
         mcFillSlot(slots.Backpack, "rbxassetid://" .. backpackAcc.ItemIconID.Value, mcTierColor(backpackAcc), false)
     else
         mcFillSlot(slots.Backpack, MC_PLACEHOLDER.Backpack, nil, true)
     end
 
+    -- ── Scan weapons (character Tools first, then Backpack) ──
     local weapons = {}
     for _, t in ipairs(char:GetChildren()) do
         if t:IsA("Tool") then table.insert(weapons, t) end
@@ -1750,11 +1816,14 @@ local function mcUpdatePlayer(player)
         end
     end
 
+    -- Resolve an icon for a Tool — mirrors ivGetToolIcon exactly.
     local function weaponIcon(tool)
+        -- 1) ItemIconID directly on the Tool (confirmed from dump: every gun has this)
         local direct = tool:FindFirstChild("ItemIconID")
         if direct and direct:IsA("StringValue") and direct.Value ~= "" then
             return "rbxassetid://" .. direct.Value
         end
+        -- 2) SPH_Weapon Configuration child
         local sphCfg = tool:FindFirstChild("SPH_Weapon")
         if sphCfg then
             local iv = sphCfg:FindFirstChild("ItemIconID") or sphCfg:FindFirstChild("WeaponIcon")
@@ -1762,11 +1831,13 @@ local function mcUpdatePlayer(player)
                 return "rbxassetid://" .. iv.Value
             end
         end
+        -- 3) Grip > SpecialMesh TextureId
         local grip = tool:FindFirstChild("Grip")
         if grip then
             local mesh = grip:FindFirstChildOfClass("SpecialMesh")
             if mesh and mesh.TextureId ~= "" then return mesh.TextureId end
         end
+        -- 4) Handle > SpecialMesh TextureId
         local handle = tool:FindFirstChild("Handle")
         if handle then
             local mesh = handle:FindFirstChildOfClass("SpecialMesh")
@@ -1782,10 +1853,13 @@ local function mcUpdatePlayer(player)
         if tool then
             local icon = weaponIcon(tool)
             if icon then
+                -- Found a real icon — show it with a white border
                 mcFillSlot(sd, icon, Color3.fromRGB(255, 255, 255), false)
+                -- Remove any leftover name label from a previous cycle
                 local lbl = sd.Frame:FindFirstChild("WepName")
                 if lbl then lbl.Visible = false end
             else
+                -- No icon found — show placeholder dimmed + abbreviated name
                 sd.Icon.Image            = MC_PLACEHOLDER.Weapon
                 sd.Icon.ImageTransparency = 0.5
                 sd.Stroke.Color          = Color3.fromRGB(255, 200, 50)
@@ -1810,12 +1884,14 @@ local function mcUpdatePlayer(player)
                 lbl.Visible = true
             end
         else
+            -- Slot is empty
             mcFillSlot(sd, MC_PLACEHOLDER.Weapon, nil, true)
             local lbl = sd.Frame:FindFirstChild("WepName")
             if lbl then lbl.Visible = false end
         end
     end
 
+    -- ── Name + distance bar ───────────────────────────────
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if hrp then
         local dist  = math.floor((cam.CFrame.Position - hrp.Position).Magnitude)
@@ -1827,6 +1903,7 @@ local function mcUpdatePlayer(player)
     end
 end
 
+-- Destroys a player's cached billboard and removes the cache entry.
 local function mcClean(player)
     local cached = mcCache[player]
     if cached and cached.BB and cached.BB.Parent then
@@ -1835,6 +1912,8 @@ local function mcClean(player)
     mcCache[player] = nil
 end
 
+-- Hook respawn: rebuild billboard fresh after a short delay
+-- (needed so accessories are fully loaded onto the new character)
 local function mcHookRespawn(player)
     player.CharacterAdded:Connect(function()
         task.wait(0.5)
@@ -1850,22 +1929,26 @@ Players.PlayerAdded:Connect(function(p)
 end)
 Players.PlayerRemoving:Connect(mcClean)
 
+-- Main update loop: runs at 0.4s intervals, light on performance
 task.spawn(function()
     while task.wait(0.4) do
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= plr then
                 if Config.OverheadInvESP then
+                    -- Distance gate: hide billboard if player is beyond MaxESP distance
                     local char = p.Character
                     local hrp  = char and char:FindFirstChild("HumanoidRootPart")
                     if hrp then
                         local dist = (cam.CFrame.Position - hrp.Position).Magnitude
                         if dist > Config.MaxDistance then
+                            -- Outside range — hide without destroying cache
                             local cached = mcCache[p]
                             if cached and cached.BB then
                                 cached.BB.Enabled = false
                             end
                         else
                             mcUpdatePlayer(p)
+                            -- Scale billboard size so it doesn't balloon at long range
                             local cached = mcCache[p]
                             if cached and cached.BB then
                                 local scale = math.clamp(MC_REF_DIST / dist, 0.25, 1)
@@ -1876,6 +1959,7 @@ task.spawn(function()
                             end
                         end
                     else
+                        -- No HRP yet (loading) — just run normal update
                         mcUpdatePlayer(p)
                     end
                 else
@@ -1889,6 +1973,7 @@ end)
 -- ==========================================
 -- RENDER STEPPED: Drawing ESP + Chams
 -- ==========================================
+-- Helper: get a tight 2D bounding box for a character by projecting key body parts
 local function getCharBox(char)
     local parts = {"Head", "HumanoidRootPart", "LeftFoot", "RightFoot", "LeftHand", "RightHand"}
     local minX, maxX, minY, maxY = math.huge, -math.huge, math.huge, -math.huge
@@ -1907,6 +1992,7 @@ local function getCharBox(char)
         end
     end
     if not anyOnScreen then return nil end
+    -- Add a small margin
     local margin = 4
     return Vector2.new(math.floor(minX - margin), math.floor(minY - margin)),
            Vector2.new(math.floor(maxX - minX + margin * 2), math.floor(maxY - minY + margin * 2))
@@ -2013,6 +2099,7 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
+    -- Chams Logic
     if Config.Chams then
         for _, p in pairs(Players:GetPlayers()) do
             if p ~= plr and p.Character then
@@ -2065,6 +2152,7 @@ UIS.InputBegan:Connect(function(input, gp)
     end
 end)
 
+-- Helper: get a 3D world position for a Model — tries PrimaryPart, then first BasePart
 local function getModelAnchor(model)
     if model:IsA("BasePart") then return model end
     if model.PrimaryPart then return model.PrimaryPart end
@@ -2074,6 +2162,7 @@ local function getModelAnchor(model)
     return nil
 end
 
+-- Helper: read non-empty slots from a Slots folder, return comma-separated string (max ~6 items shown)
 local function readSlots(model)
     local slotsFolder = model:FindFirstChild("Slots")
     if not slotsFolder then return nil end
@@ -2091,6 +2180,7 @@ local function readSlots(model)
     return #items > 0 and table.concat(items, ", ") or nil
 end
 
+-- Helper: read worn gear names from a corpse/character model
 local function readCorpseGear(model)
     local gear = {}
     for _, acc in pairs(model:GetChildren()) do
@@ -2102,23 +2192,29 @@ local function readCorpseGear(model)
     return #gear > 0 and table.concat(gear, " | ") or "No Gear"
 end
 
+-- Helper: check whether a world position is within WorldESPMaxDistance from camera
 local function inWorldRange(pos)
     return (cam.CFrame.Position - pos).Magnitude <= Config.WorldESPMaxDistance
 end
 
+-- World ESP scan loop (1s tick)
 task.spawn(function()
     while task.wait(1) do
+        -- ── Workspace.Containers: Corpses, DroppedItems, Containers (incl. Vault) ──
         local containers = Workspace:FindFirstChild("Containers")
         if containers then
+            -- Use GetDescendants to catch items nested inside sub-folders
             for _, obj in pairs(containers:GetDescendants()) do
                 if (obj:IsA("Model") or obj:IsA("MeshPart") or obj:IsA("BasePart")) and obj.Parent ~= nil then
                     local anchor = getModelAnchor(obj)
                     if not anchor then continue end
                     if not inWorldRange(anchor.Position) then
+                        -- out of range — remove existing tag
                         local b = obj:FindFirstChild("OMAWareESP") if b then b:Destroy() end
                         continue
                     end
 
+                    -- CORPSE ESP
                     if obj:FindFirstChild("CorpseOwner") then
                         if Config.CorpseESP then
                             local ownerVal = obj:FindFirstChild("CorpseOwner")
@@ -2134,6 +2230,7 @@ task.spawn(function()
                             local b = obj:FindFirstChild("OMAWareESP") if b then b:Destroy() end
                         end
 
+                    -- VAULT EXTRACTION ESP (Vault is inside Containers, has ExtractUI)
                     elseif obj.Name == "Vault" and obj:FindFirstChild("ExtractUI") then
                         if Config.ExtractionESP then
                             local existing = obj:FindFirstChild("OMAWareESP") if existing then existing:Destroy() end
@@ -2142,6 +2239,7 @@ task.spawn(function()
                             local b = obj:FindFirstChild("OMAWareESP") if b then b:Destroy() end
                         end
 
+                    -- DROPPED ITEM ESP — DroppedItemContainer children
                     elseif obj.Parent and obj.Parent.Name == "DroppedItemContainer" then
                         if Config.DroppedItemESP then
                             local inv = readSlots(obj)
@@ -2152,6 +2250,7 @@ task.spawn(function()
                             local b = obj:FindFirstChild("OMAWareESP") if b then b:Destroy() end
                         end
 
+                    -- LOOT CONTAINER ESP — whitelisted container types
                     elseif ContainerWhitelist[obj.Name] then
                         if Config.ContainerESP then
                             local inv = readSlots(obj)
@@ -2166,18 +2265,22 @@ task.spawn(function()
             end
         end
 
+        -- ── Workspace.Extractions: the 10 real extraction points ──────────────
         local extractions = Workspace:FindFirstChild("Extractions")
         if extractions then
             for _, extractPart in pairs(extractions:GetChildren()) do
                 if extractPart:IsA("BasePart") then
+                    -- Remove any stale billboard first
                     local old = extractPart:FindFirstChild("OMAWareExtract")
                     if not inWorldRange(extractPart.Position) then
                         if old then old:Destroy() end
                     elseif Config.ExtractionESP then
                         local availVal = extractPart:FindFirstChild("Available")
                         local isOpen   = availVal and availVal.Value or false
+                        -- Rebuild every tick so status stays live
                         if old then old:Destroy() end
 
+                        -- Compact sleek BillboardGui
                         local bb = Instance.new("BillboardGui")
                         bb.Name          = "OMAWareExtract"
                         bb.AlwaysOnTop   = true
@@ -2186,6 +2289,7 @@ task.spawn(function()
                         bb.LightInfluence = 0
                         bb.Parent        = extractPart
 
+                        -- Pill background
                         local bg = Instance.new("Frame", bb)
                         bg.Size                  = UDim2.new(1, 0, 1, 0)
                         bg.BackgroundColor3      = Color3.fromRGB(10, 10, 12)
@@ -2197,13 +2301,15 @@ task.spawn(function()
                         bgS.Color        = isOpen and Color3.fromRGB(40, 220, 80) or Config.ExtractionColor
                         bgS.Transparency = 0.1
 
+                        -- Status dot
                         local dot = Instance.new("Frame", bg)
                         dot.Size             = UDim2.new(0, 7, 0, 7)
-                        dot.Position         = UDim2.new(0,8, 0.5, -3)
+                        dot.Position         = UDim2.new(0, 8, 0.5, -3)
                         dot.BackgroundColor3 = isOpen and Color3.fromRGB(40, 220, 80) or Color3.fromRGB(200, 60, 60)
                         dot.BorderSizePixel  = 0
                         local dotC = Instance.new("UICorner", dot) dotC.CornerRadius = UDim.new(1, 0)
 
+                        -- Name label
                         local lbl = Instance.new("TextLabel", bg)
                         lbl.Size                   = UDim2.new(1, -22, 0.55, 0)
                         lbl.Position               = UDim2.new(0, 18, 0, 1)
@@ -2215,6 +2321,7 @@ task.spawn(function()
                         lbl.TextXAlignment         = Enum.TextXAlignment.Left
                         lbl.TextTruncate           = Enum.TextTruncate.AtEnd
 
+                        -- Status label
                         local slbl = Instance.new("TextLabel", bg)
                         slbl.Size                   = UDim2.new(1, -18, 0.45, 0)
                         slbl.Position               = UDim2.new(0, 18, 0.55, 0)
@@ -2231,11 +2338,14 @@ task.spawn(function()
             end
         end
 
+        -- ── AI Billboard Tags + Chams ─────────────────────────────────────────
         local function scanAIs(folder)
             if not folder then return end
             for _, bot in pairs(folder:GetChildren()) do
                 if bot:IsA("Model") and bot:FindFirstChild("Humanoid") then
+                    -- ensure Drawing ESP object exists
                     if not NPCESPObjects[bot] then createNPCESPObjects(bot) end
+                    -- billboard nametag
                     if Config.AINameTag then
                         if not bot:FindFirstChild("OMAWareESP") then
                             addBillboard(bot.PrimaryPart or bot:FindFirstChild("Head"), bot.Name .. " | NPC", Config.NameTagColor)
@@ -2243,6 +2353,7 @@ task.spawn(function()
                     else
                         local b = bot:FindFirstChild("OMAWareESP") if b then b:Destroy() end
                     end
+                    -- Highlight chams
                     if Config.AIHighlight then
                         if not bot:FindFirstChild("OMAWareAIChams") then
                             local h = Instance.new("Highlight")
